@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"crypto/rand"
 	"encoding/xml"
 	"io"
 	"log"
+	"math/big"
 	"net"
 	"net/http"
 	"strconv"
@@ -14,6 +16,112 @@ import (
 	"github.com/gesellix/bose-soundtouch/pkg/service/marge"
 	"github.com/go-chi/chi/v5"
 )
+
+// HandleMargeCreateAccount creates a new account from Stockholm (XML).
+func (s *Server) HandleMargeCreateAccount(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		return
+	}
+
+	var req models.MargeAccountCreateRequest
+	if err := xml.Unmarshal(body, &req); err != nil {
+		http.Error(w, "Invalid XML body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Use provided ID or generate new 7-digit ID
+	var id string
+
+	if req.ID != "" {
+		id = req.ID
+	} else {
+		for {
+			n, _ := rand.Int(rand.Reader, big.NewInt(9000000))
+			id = strconv.FormatInt(n.Int64()+1000000, 10)
+
+			existing, _ := s.ds.GetAccountInfo(id)
+			if existing == nil || existing.IsPlaceholder {
+				break
+			}
+		}
+	}
+
+	info := &models.ServiceAccountInfo{
+		AccountID:         id,
+		PreferredLanguage: req.PreferredLanguage,
+	}
+	if info.PreferredLanguage == "" {
+		info.PreferredLanguage = "en"
+	}
+
+	if err := s.ds.SaveAccountInfo(id, info); err != nil {
+		http.Error(w, "Failed to save account", http.StatusInternalServerError)
+		return
+	}
+
+	// Stockholm expects the account XML in response
+	resp := models.AccountFullResponse{
+		ID:                id,
+		AccountStatus:     "ACTIVE",
+		PreferredLanguage: info.PreferredLanguage,
+	}
+
+	w.Header().Set("Content-Type", "application/vnd.bose.streaming-v1.2+xml")
+	w.WriteHeader(http.StatusCreated)
+	_ = xml.NewEncoder(w).Encode(resp)
+}
+
+// HandleMargeLogin handles account login from Stockholm.
+func (s *Server) HandleMargeLogin(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		return
+	}
+
+	var req models.MargeLoginRequest
+	if err = xml.Unmarshal(body, &req); err != nil {
+		http.Error(w, "Invalid XML body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Simple mock: find account by email or just return a default one if none exists
+	// For now, let's just return a fixed one for testing if nothing else matches
+	accounts, err := s.ds.ListAccounts()
+
+	accountID := ""
+
+	if err == nil {
+		for _, id := range accounts {
+			if id == "default" {
+				continue
+			}
+			// In a real system we'd check email/password
+			// Here we just pick the first one or use fallback
+			accountID = id
+
+			break
+		}
+	}
+
+	if accountID == "" {
+		http.Error(w, "No accounts found", http.StatusUnauthorized)
+		return
+	}
+
+	resp := models.AccountFullResponse{
+		ID:                accountID,
+		AccountStatus:     "ACTIVE",
+		PreferredLanguage: "en",
+	}
+
+	// Bose returns a token in the Credentials header
+	w.Header().Set("Credentials", "mock-token-"+accountID)
+	w.Header().Set("Content-Type", "application/vnd.bose.streaming-v1.2+xml")
+	_ = xml.NewEncoder(w).Encode(resp)
+}
 
 // HandleMargeSourceProviders returns the Marge source providers.
 func (s *Server) HandleMargeSourceProviders(w http.ResponseWriter, r *http.Request) {

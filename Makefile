@@ -103,7 +103,36 @@ test-coverage:
 	$(GOCMD) tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
 
-check: fmt vet test
+check: fmt vet test test-http-client
+
+test-http-client:
+	@echo "Running HTTP client integration tests..."
+	@docker network create soundtouch-test-net || true
+	@docker build -t soundtouch-service-test .
+	@docker run -d --name soundtouch-service --network soundtouch-test-net \
+		-e PORT=8000 \
+		soundtouch-service-test
+	@echo "Waiting for service to start..."
+	@sleep 5
+	@docker run --rm --network soundtouch-test-net \
+		-v $(PWD)/tests/integration/http-client:/workdir \
+		jetbrains/intellij-http-client:2026.1 \
+		--env-file /workdir/http-client.env.json \
+		--env ci \
+		/workdir/create_account.http \
+		/workdir/register_device.http \
+		/workdir/power_on.http \
+		/workdir/get_provider_settings.http \
+		/workdir/get_full_account.http \
+		/workdir/get_group.http \
+		--report; \
+	EXIT_CODE=$$?; \
+	docker logs soundtouch-service; \
+	docker stop soundtouch-service; \
+	docker rm soundtouch-service; \
+	docker rmi soundtouch-service-test; \
+	docker network rm soundtouch-test-net; \
+	exit $$EXIT_CODE
 
 fmt:
 	@echo "Formatting code..."

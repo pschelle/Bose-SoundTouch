@@ -1,0 +1,45 @@
+### Create Account (Official Stockholm endpoint)
+POST {{host}}/streaming/account
+Content-Type: application/vnd.bose.customer-v1.0+xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<account id="{{accountId}}">
+    <firstName>John</firstName>
+    <lastName>Doe</lastName>
+    <email>john.doe@example.com</email>
+    <password>password123</password>
+    <countryCode>US</countryCode>
+    <preferredLanguage>en</preferredLanguage>
+</account>
+
+> {%
+    client.test("Account created via XML successfully", function() {
+        client.assert(response.status === 201, "Response status is not 201");
+        const doc = response.body;
+        const account = doc.getElementsByTagName("account")[0];
+        client.assert(account !== undefined, "Response body should contain account XML");
+        var accountId = account.getAttribute("id");
+        if (client.variables.environment.get("accountId")) {
+            client.assert(accountId === client.variables.environment.get("accountId"), "Account ID "+accountId+" should match environment variable if provided");
+        }
+        client.global.set("newAccountId", accountId);
+    });
+%}
+
+### Login (Official Stockholm endpoint)
+POST {{host}}/streaming/account/login
+Content-Type: application/vnd.bose.streaming-v1.2+xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<login>
+    <username>john.doe@example.com</username>
+    <password>password123</password>
+</login>
+
+> {%
+    client.test("Login successful", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.headers.valueOf("Credentials") !== null, "Credentials header missing");
+        client.global.set("authToken", response.headers.valueOf("Credentials"));
+    });
+%}
