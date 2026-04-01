@@ -8,7 +8,7 @@ Welcome to the documentation for the Bose SoundTouch Toolkit. This comprehensive
 - **[Complete Migration Guide](guides/MIGRATION-GUIDE.md)** - Step-by-step guide from Bose Cloud to local control
 - **[Getting Started](guides/GETTING-STARTED.md)** - Quick introduction to the toolkit
 
-### For Existing Users  
+### For Existing Users
 - **[Cloud Shutdown Survival Guide](guides/SURVIVAL-GUIDE.md)** - Prepare for the May 2026 shutdown
 - **[SoundTouch Service Guide](guides/SOUNDTOUCH-SERVICE.md)** - Advanced service configuration
 
@@ -17,7 +17,7 @@ Welcome to the documentation for the Bose SoundTouch Toolkit. This comprehensive
 The documentation is organized into three main categories:
 
 ### 1. **User Guides** - For everyday users migrating and managing devices
-### 2. **Technical Reference** - For developers and advanced configuration  
+### 2. **Technical Reference** - For developers and advanced configuration
 ### 3. **Concept Documentation** - For contributors and system architects
 
 ## 🗂 Documentation Structure
@@ -47,6 +47,7 @@ The documentation is organized into three main categories:
 
 ### API Documentation
 - [API Endpoints](reference/API-ENDPOINTS.md) - REST API reference
+- [Spotify Account Addition](reference/spotify-account-addition.md) - Technical requests for Spotify
 - [WebSocket Events](reference/WEBSOCKET-EVENTS.md) - Real-time events
 - [Zone Management](reference/ZONE-MANAGEMENT.md) - Multi-room control
 - [Preset Management](reference/PRESET-MANAGEMENT.md) - Preset operations
