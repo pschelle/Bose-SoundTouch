@@ -747,7 +747,9 @@ func setupRouter(server *handlers.Server) *chi.Mux {
 				r.Get("/presets", server.HandleMargePresets)
 				r.Post("/presets/{presetNumber}", server.HandleMargeUpdatePreset)
 				r.Put("/preset/{presetNumber}", server.HandleMargeUpdatePreset)
+				r.Delete("/preset/{presetNumber}", server.HandleMargeRemovePreset)
 				r.Get("/recent", server.HandleMargeRecents)
+				r.Get("/recents", server.HandleMargeRecents)
 				r.Post("/recent", server.HandleMargeAddRecent)
 
 				r.Get("/group", server.HandleMargeDeviceGroup)
@@ -755,6 +757,8 @@ func setupRouter(server *handlers.Server) *chi.Mux {
 				r.Get("/group/server", server.HandleMargeDeviceGroupServer)
 				r.Get("/group/member", server.HandleMargeDeviceGroupMember)
 			})
+
+			r.Delete("/device/{device}", server.HandleMargeRemoveDevice)
 		})
 
 		r.Get("/device/{device}/streaming_token", server.HandleMargeStreamingToken)

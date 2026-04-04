@@ -6,6 +6,7 @@ DELETE   /setup/dns-discoveries                                       handlers.(
 DELETE   /setup/interactions/sessions                                 handlers.(*Server).HandleCleanupSessions-fm
 DELETE   /setup/interactions/sessions/{session}                       handlers.(*Server).HandleDeleteSession-fm
 DELETE   /setup/parity-mismatches                                     handlers.(*Server).HandleClearParityMismatches-fm
+DELETE   /streaming/account/{account}/device/{device}/preset/{presetNumber} handlers.(*Server).HandleMargeRemovePreset-fm
 GET      /                                                            handlers.(*Server).HandleRoot-fm
 GET      /accounts/{account}/devices/{device}/group                   handlers.(*Server).HandleMargeDeviceGroup-fm
 GET      /accounts/{account}/devices/{device}/group/                  handlers.(*Server).HandleMargeDeviceGroup-fm
@@ -55,6 +56,7 @@ GET      /streaming/account/{account}/device/{device}/group/member    handlers.(
 GET      /streaming/account/{account}/device/{device}/group/server    handlers.(*Server).HandleMargeDeviceGroupServer-fm
 GET      /streaming/account/{account}/device/{device}/presets         handlers.(*Server).HandleMargePresets-fm
 GET      /streaming/account/{account}/device/{device}/recent          handlers.(*Server).HandleMargeRecents-fm
+GET      /streaming/account/{account}/device/{device}/recents         handlers.(*Server).HandleMargeRecents-fm
 GET      /streaming/account/{account}/emailaddress                    handlers.(*Server).HandleMargeGetEmailAddress-fm
 GET      /streaming/account/{account}/full                            handlers.(*Server).HandleMargeAccountFull-fm
 GET      /streaming/account/{account}/provider_settings               handlers.(*Server).HandleMargeProviderSettings-fm

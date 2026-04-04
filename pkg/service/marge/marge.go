@@ -86,7 +86,14 @@ func GetConfiguredSourceXML(cs models.ConfiguredSource) string {
 
 // PrepareConfiguredSource sets up the source for XML marshaling.
 func PrepareConfiguredSource(s *models.ConfiguredSource) {
-	// Ensure dates are populated
+	ensureTimestamps(s)
+	ensureSourceType(s)
+	ensureSourceProviderID(s)
+	syncCredentials(s)
+	syncLegacySourceKey(s)
+}
+
+func ensureTimestamps(s *models.ConfiguredSource) {
 	if s.CreatedOn == "" {
 		s.CreatedOn = constants.DateStr
 	}
@@ -94,13 +101,15 @@ func PrepareConfiguredSource(s *models.ConfiguredSource) {
 	if s.UpdatedOn == "" {
 		s.UpdatedOn = constants.DateStr
 	}
+}
 
-	// Default type for media sources
+func ensureSourceType(s *models.ConfiguredSource) {
 	if s.Type == "" || (s.SourceKey.Type != "" && s.SourceKey.Type != "AUX" && s.SourceKey.Type != "BLUETOOTH") {
 		s.Type = "Audio"
 	}
+}
 
-	// Ensure SourceProviderID is populated if possible
+func ensureSourceProviderID(s *models.ConfiguredSource) {
 	if s.SourceProviderID == "" && s.SourceKey.Type != "" {
 		for _, p := range constants.StaticProviders {
 			if p.Name == s.SourceKey.Type {
@@ -109,8 +118,9 @@ func PrepareConfiguredSource(s *models.ConfiguredSource) {
 			}
 		}
 	}
+}
 
-	// Map secret types
+func syncCredentials(s *models.ConfiguredSource) {
 	if s.SecretType == "" {
 		if s.SourceKey.Type == "SPOTIFY" {
 			s.SecretType = "token_version_3"
@@ -127,7 +137,16 @@ func PrepareConfiguredSource(s *models.ConfiguredSource) {
 		s.Credential.Value = s.Secret
 	}
 
-	// Ensure SourceKey fields are synced with legacy fields if they were used
+	if s.Secret == "" && s.Credential.Value != "" {
+		s.Secret = s.Credential.Value
+	}
+
+	if s.SecretType == "" && s.Credential.Type != "" {
+		s.SecretType = s.Credential.Type
+	}
+}
+
+func syncLegacySourceKey(s *models.ConfiguredSource) {
 	if s.SourceKey.Type == "" && s.SourceKeyType != "" {
 		s.SourceKey.Type = s.SourceKeyType
 	}
@@ -135,6 +154,94 @@ func PrepareConfiguredSource(s *models.ConfiguredSource) {
 	if s.SourceKey.Account == "" && s.SourceKeyAccount != "" {
 		s.SourceKey.Account = s.SourceKeyAccount
 	}
+}
+
+// PresetsXML is the XML wrapper for a list of presets.
+type PresetsXML struct {
+	XMLName xml.Name               `xml:"presets"`
+	Presets []models.ServicePreset `xml:"preset"`
+}
+
+type presetParityXML struct {
+	ButtonNumber    string                   `xml:"buttonNumber,attr,omitempty"`
+	ContainerArt    string                   `xml:"containerArt"`
+	ContentItemType string                   `xml:"contentItemType"`
+	CreatedOn       string                   `xml:"createdOn"`
+	Location        string                   `xml:"location"`
+	Name            string                   `xml:"name"`
+	Source          *models.ConfiguredSource `xml:"source,omitempty"`
+	SourceID        string                   `xml:"sourceid,omitempty"`
+	UpdatedOn       string                   `xml:"updatedOn"`
+	Username        string                   `xml:"username"`
+}
+
+func (p presetParityXML) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	type Alias presetParityXML
+
+	start.Name.Local = "preset"
+
+	return e.EncodeElement(Alias(p), start)
+}
+
+func prepareRecentItemParitySource(src *models.ConfiguredSource) *models.RecentItemParitySource {
+	sxml := &models.RecentItemParitySource{
+		ID:               src.ID,
+		Type:             src.Type,
+		CreatedOn:        src.CreatedOn,
+		UpdatedOn:        src.UpdatedOn,
+		Name:             src.DisplayName,
+		SourceProviderID: src.SourceProviderID,
+		SourceName:       src.SourceName,
+		Username:         src.Username,
+		Credential: &models.RecentItemParityCredential{
+			Type:  src.Credential.Type,
+			Value: src.Credential.Value,
+		},
+	}
+
+	if sxml.Name == "TuneIn" || sxml.Name == "LOCAL_INTERNET_RADIO" {
+		sxml.Name = ""
+	}
+
+	secret := src.Secret
+	if secret == "" {
+		secret = src.Credential.Value
+	}
+
+	secretType := src.SecretType
+	if secretType == "" {
+		secretType = src.Credential.Type
+	}
+
+	if secretType == "" {
+		secretType = "token"
+	}
+
+	if sxml.Credential.Value == "" {
+		sxml.Credential.Value = secret
+	}
+
+	if sxml.Credential.Type == "" {
+		sxml.Credential.Type = secretType
+	}
+
+	if sxml.SourceName == "" {
+		sxml.SourceName = src.SourceKeyType
+	}
+
+	if sxml.SourceName == "" {
+		sxml.SourceName = sxml.Username
+	}
+
+	if sxml.Username == "" {
+		sxml.Username = sxml.SourceName
+	}
+
+	if sxml.Name == "" {
+		sxml.Name = sxml.SourceName
+	}
+
+	return sxml
 }
 
 // PresetsToXML converts account presets to XML format for Marge responses.
@@ -149,34 +256,63 @@ func PresetsToXML(ds *datastore.DataStore, account, deviceID string) ([]byte, er
 		return nil, err
 	}
 
-	type PresetsXML struct {
-		XMLName xml.Name               `xml:"presets"`
-		Presets []models.ServicePreset `xml:"preset"`
+	type presetsParityWrapper struct {
+		XMLName xml.Name          `xml:"presets"`
+		Presets []presetParityXML `xml:"preset"`
 	}
 
-	pxml := PresetsXML{
-		Presets: make([]models.ServicePreset, 0, len(presets)),
+	pxml := presetsParityWrapper{
+		Presets: make([]presetParityXML, 0, len(presets)),
 	}
 
 	for i := range presets {
 		p := presets[i]
 
+		// Find and prepare source
+		matchedSource := findMatchingSourceForPreset(sources, p)
+		if matchedSource != nil {
+			PrepareConfiguredSource(matchedSource)
+		}
+
+		if p.ContentItemType == "" && p.Name == "" && p.Location == "" && (matchedSource == nil || matchedSource.ID == "") {
+			continue
+		}
+
 		p.ButtonNumber = p.ID
 		if p.CreatedOn == "" {
 			p.CreatedOn = constants.DateStr
+		} else if t, e := strconv.ParseInt(p.CreatedOn, 10, 64); e == nil {
+			p.CreatedOn = time.Unix(t, 0).UTC().Format("2006-01-02T15:04:05.000+00:00")
 		}
 
 		if p.UpdatedOn == "" {
 			p.UpdatedOn = constants.DateStr
+		} else if t, e := strconv.ParseInt(p.UpdatedOn, 10, 64); e == nil {
+			p.UpdatedOn = time.Unix(t, 0).UTC().Format("2006-01-02T15:04:05.000+00:00")
 		}
 
-		// Find and prepare source
-		if matchedSource := findMatchingSourceForPreset(sources, p); matchedSource != nil {
-			PrepareConfiguredSource(matchedSource)
-			p.SourceConfig = matchedSource
+		username := p.Username
+		if username == "" {
+			username = p.Name
 		}
 
-		pxml.Presets = append(pxml.Presets, p)
+		sourceID := p.SourceID
+		if sourceID == "" && matchedSource != nil {
+			sourceID = matchedSource.ID
+		}
+
+		pxml.Presets = append(pxml.Presets, presetParityXML{
+			ButtonNumber:    p.ButtonNumber,
+			ContainerArt:    p.ContainerArt,
+			ContentItemType: p.ContentItemType,
+			CreatedOn:       p.CreatedOn,
+			Location:        p.Location,
+			Name:            p.Name,
+			Source:          matchedSource,
+			SourceID:        sourceID,
+			UpdatedOn:       p.UpdatedOn,
+			Username:        username,
+		})
 	}
 
 	data, err := xml.MarshalIndent(pxml, "", "  ")
@@ -211,33 +347,38 @@ func RecentsToXML(ds *datastore.DataStore, account, deviceID string) ([]byte, er
 		return nil, err
 	}
 
-	type RecentsXML struct {
-		XMLName xml.Name               `xml:"recents"`
-		Recents []models.ServiceRecent `xml:"recent"`
+	type recentsParityXML struct {
+		XMLName xml.Name `xml:"recents"`
+		Recents []recent `xml:"recent"`
 	}
 
-	rxml := RecentsXML{
-		Recents: recents,
+	rxml := recentsParityXML{
+		Recents: make([]recent, len(recents)),
 	}
 
-	for i := range rxml.Recents {
-		r := &rxml.Recents[i]
+	sources, _ := ds.GetConfiguredSources(account, deviceID)
+
+	for i := range recents {
+		r := &recents[i]
 		if r.SourceConfig == nil && r.SourceID != "" {
-			sources, err2 := ds.GetConfiguredSources(account, deviceID)
-			if err2 == nil {
-				r.SourceConfig = findMatchingSource(sources, r.SourceID)
-			}
+			r.SourceConfig = findMatchingSource(sources, r.SourceID)
 		}
 
 		if r.SourceConfig != nil {
 			PrepareConfiguredSource(r.SourceConfig)
-		}
+		} else if r.Source != "" {
+			// Try to find by Source and SourceAccount if SourceID didn't match
+			for j := range sources {
+				if sources[j].SourceKeyType == r.Source && sources[j].SourceKeyAccount == r.SourceAccount {
+					r.SourceConfig = &sources[j]
+					PrepareConfiguredSource(r.SourceConfig)
 
-		if r.UtcTime != "" {
-			if t, parseErr := strconv.ParseInt(r.UtcTime, 10, 64); parseErr == nil {
-				r.LastPlayedAt = time.Unix(t, 0).UTC().Format("2006-01-02T15:04:05.000+00:00")
+					break
+				}
 			}
 		}
+
+		rxml.Recents[i] = recentToXML(r)
 	}
 
 	data, err := xml.MarshalIndent(rxml, "", "  ")
@@ -251,6 +392,80 @@ func RecentsToXML(ds *datastore.DataStore, account, deviceID string) ([]byte, er
 	header := constants.XMLHeader
 
 	return append([]byte(header+"\n"), data...), nil
+}
+
+type recent struct {
+	ID              string                         `xml:"id,attr"`
+	ContentItem     *contentItem                   `xml:"contentItem"`
+	ContentItemType string                         `xml:"contentItemType"`
+	CreatedOn       string                         `xml:"createdOn"`
+	LastPlayedAt    string                         `xml:"lastplayedat"`
+	Location        string                         `xml:"location"`
+	Name            string                         `xml:"name"`
+	Source          *models.RecentItemParitySource `xml:"source,omitempty"`
+	SourceID        string                         `xml:"sourceid"`
+	UpdatedOn       string                         `xml:"updatedOn"`
+}
+
+type contentItem struct {
+	Source        string `xml:"source,attr"`
+	Type          string `xml:"type,attr"`
+	Location      string `xml:"location,attr"`
+	SourceAccount string `xml:"sourceAccount,attr"`
+	IsPresetable  string `xml:"isPresetable,attr"`
+	ItemName      string `xml:"itemName"`
+	ContainerArt  string `xml:"containerArt,omitempty"`
+}
+
+func recentToXML(r *models.ServiceRecent) recent {
+	utcTime := int64(0)
+
+	if r.UtcTime != "" {
+		if t, parseErr := strconv.ParseInt(r.UtcTime, 10, 64); parseErr == nil {
+			utcTime = t
+		}
+	}
+
+	createdOn := r.CreatedOn
+	if createdOn == "" {
+		createdOn = FormatTime(time.Now())
+	}
+
+	updatedOn := r.UpdatedOn
+	if updatedOn == "" {
+		updatedOn = createdOn
+	}
+
+	lastPlayedAt := r.LastPlayedAt
+	if lastPlayedAt == "" && utcTime > 0 {
+		lastPlayedAt = time.Unix(utcTime, 0).UTC().Format("2006-01-02T15:04:05.000+00:00")
+	}
+
+	res := recent{
+		ID:              r.ID,
+		ContentItemType: r.ContentItemType,
+		CreatedOn:       createdOn,
+		UpdatedOn:       updatedOn,
+		LastPlayedAt:    lastPlayedAt,
+		Location:        r.Location,
+		Name:            r.Name,
+		SourceID:        r.SourceID,
+		ContentItem: &contentItem{
+			Source:        r.Source,
+			Type:          r.Type,
+			Location:      r.Location,
+			SourceAccount: r.SourceAccount,
+			IsPresetable:  r.IsPresetable,
+			ItemName:      r.Name,
+			ContainerArt:  r.ContainerArt,
+		},
+	}
+
+	if r.SourceConfig != nil {
+		res.Source = prepareRecentItemParitySource(r.SourceConfig)
+	}
+
+	return res
 }
 
 // ProviderSettingsToXML generates provider settings XML for the specified account.
@@ -679,6 +894,23 @@ func AccountFullToXML(ds *datastore.DataStore, account string) ([]byte, error) {
 	return append([]byte(constants.XMLHeader), data...), nil
 }
 
+// RemovePreset clears a preset for the specified account and device.
+func RemovePreset(ds *datastore.DataStore, account, device string, presetNumber int) error {
+	presets, err := ds.GetPresets(account, device)
+	if err != nil {
+		return err
+	}
+
+	if presetNumber < 1 || presetNumber > len(presets) {
+		// Preset doesn't exist or index out of range, nothing to do
+		return nil
+	}
+
+	presets[presetNumber-1] = models.ServicePreset{}
+
+	return ds.SavePresets(account, device, presets)
+}
+
 // UpdatePreset updates or creates a preset for the specified account and device.
 func UpdatePreset(ds *datastore.DataStore, account, device string, presetNumber int, sourceXML []byte) ([]byte, error) {
 	sources, err := ds.GetConfiguredSources(account, device)
@@ -760,8 +992,14 @@ func UpdatePreset(ds *datastore.DataStore, account, device string, presetNumber 
 	// Return XML for the single preset
 	PrepareConfiguredSource(matchingSrc)
 	presetObj.SourceConfig = matchingSrc
+	presetObj.Username = newPresetElem.Name
 
-	data, err := xml.Marshal(presetObj)
+	// Parity: return the preset wrapped in <presets>
+	px := PresetsXML{
+		Presets: []models.ServicePreset{presetObj},
+	}
+
+	data, err := xml.Marshal(px)
 	if err != nil {
 		return nil, err
 	}
@@ -836,6 +1074,14 @@ func syncMatchingSource(matchingSrc *models.ConfiguredSource, input recentInput)
 
 	if matchingSrc.DisplayName == "" && matchingSrc.SourceName != "" {
 		matchingSrc.DisplayName = matchingSrc.SourceName
+	}
+
+	if matchingSrc.SourceName == "" && matchingSrc.DisplayName != "" {
+		matchingSrc.SourceName = matchingSrc.DisplayName
+	}
+
+	if matchingSrc.Username == "" && matchingSrc.DisplayName != "" {
+		matchingSrc.Username = matchingSrc.DisplayName
 	}
 }
 
@@ -1216,6 +1462,10 @@ func formatRecentResponse(recentObj *models.ServiceRecent, matchingSrc *models.C
 
 		if res.Source.Credential.Type == "" && matchingSrc.SecretType != "" {
 			res.Source.Credential.Type = matchingSrc.SecretType
+		}
+
+		if res.Source.SourceName == "" {
+			res.Source.SourceName = res.Source.Username
 		}
 	}
 
