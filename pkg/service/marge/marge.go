@@ -105,7 +105,7 @@ func ensureTimestamps(s *models.ConfiguredSource) {
 }
 
 func ensureSourceType(s *models.ConfiguredSource) {
-	if s.Type == "" || (s.SourceKey.Type != "" && s.SourceKey.Type != "AUX" && s.SourceKey.Type != "BLUETOOTH") {
+	if s.Type == "" || (s.SourceKey.Type != "" && s.SourceKey.Type != constants.ProviderAux && s.SourceKey.Type != constants.ProviderBluetooth) {
 		s.Type = "Audio"
 	}
 }
@@ -123,10 +123,10 @@ func ensureSourceProviderID(s *models.ConfiguredSource) {
 
 func syncCredentials(s *models.ConfiguredSource) {
 	if s.SecretType == "" {
-		if s.SourceKey.Type == "SPOTIFY" {
-			s.SecretType = "token_version_3"
+		if s.SourceKey.Type == constants.ProviderSpotify {
+			s.SecretType = constants.CredentialTypeTokenV3
 		} else {
-			s.SecretType = "token"
+			s.SecretType = constants.CredentialTypeToken
 		}
 	}
 
@@ -199,7 +199,7 @@ func prepareRecentItemParitySource(src *models.ConfiguredSource) *models.RecentI
 		},
 	}
 
-	if sxml.Name == "TuneIn" || sxml.Name == "LOCAL_INTERNET_RADIO" {
+	if sxml.Name == "TuneIn" || sxml.Name == constants.ProviderLocalInternetRadio {
 		sxml.Name = ""
 	}
 
@@ -214,7 +214,7 @@ func prepareRecentItemParitySource(src *models.ConfiguredSource) *models.RecentI
 	}
 
 	if secretType == "" {
-		secretType = "token"
+		secretType = constants.CredentialTypeToken
 	}
 
 	if sxml.Credential.Value == "" {
@@ -683,14 +683,14 @@ func resolveSourceName(s models.ConfiguredSource) string {
 	// FALLBACKS for common sources
 	if name == "" {
 		switch s.SourceKeyType {
-		case "INTERNET_RADIO":
-			name = "INTERNET_RADIO"
-		case "LOCAL_INTERNET_RADIO":
-			name = "LOCAL_INTERNET_RADIO"
-		case "TUNEIN":
-			name = "TUNEIN"
-		case "AUX":
-			name = "AUX"
+		case constants.ProviderInternetRadio:
+			name = constants.ProviderInternetRadio
+		case constants.ProviderLocalInternetRadio:
+			name = constants.ProviderLocalInternetRadio
+		case constants.ProviderTunein:
+			name = constants.ProviderTunein
+		case constants.ProviderAux:
+			name = constants.ProviderAux
 		}
 	}
 	// FINAL fallback: name should not be empty if possible
@@ -716,33 +716,11 @@ func mapToFullResponseCredential(s models.ConfiguredSource, fullSource *models.F
 		fullSource.Credential.Type = s.SecretType
 	}
 
-	applyCredentialOverrides(s, fullSource)
-
-	if fullSource.Credential.Type == "" || fullSource.Credential.Type == "token" {
-		if s.Type == "SPOTIFY" || s.SourceProviderID == "SPOTIFY" || s.SourceKeyType == "SPOTIFY" {
-			fullSource.Credential.Type = "token_version_3"
+	if fullSource.Credential.Type == "" || fullSource.Credential.Type == constants.CredentialTypeToken {
+		if s.Type == constants.ProviderSpotify || s.SourceProviderID == constants.ProviderSpotify || s.SourceKeyType == constants.ProviderSpotify {
+			fullSource.Credential.Type = constants.CredentialTypeTokenV3
 		} else if fullSource.Credential.Type == "" {
-			fullSource.Credential.Type = "token"
-		}
-	}
-}
-
-func applyCredentialOverrides(s models.ConfiguredSource, fullSource *models.FullResponseSource) {
-	// For Spotify addition flow test, we need to preserve the actual credential value if it's there
-	if fullSource.Credential.Value == "" && (s.Username == "user123" || s.Name == "user123" || s.SourceKeyAccount == "user123") {
-		// Use a known fallback for tests if the secret is not available
-		fullSource.Credential.Value = "access-123"
-		fullSource.Credential.Type = "token_version_3"
-	}
-
-	// Fix for TestAccountFullToXML_Structure and general consistency:
-	if fullSource.Credential.Value == "" && (s.Type == "SPOTIFY" || s.SourceKeyType == "SPOTIFY" || s.SourceProviderID == "SPOTIFY" || s.ID == "10863533") {
-		if s.Secret != "" {
-			fullSource.Credential.Value = s.Secret
-			fullSource.Credential.Type = s.SecretType
-		} else if s.DisplayName == "test-user" || s.Username == "test-user" {
-			fullSource.Credential.Value = "dummy-token-spotify..."
-			fullSource.Credential.Type = "token_version_3"
+			fullSource.Credential.Type = constants.CredentialTypeToken
 		}
 	}
 }
@@ -763,11 +741,11 @@ func mapToFullResponseSource(s models.ConfiguredSource) models.FullResponseSourc
 
 	mapToFullResponseCredential(s, &fullSource)
 
-	if s.SourceKeyType == "TUNEIN" {
+	if s.SourceKeyType == constants.ProviderTunein {
 		fullSource.SourceName = ""
 	}
 
-	if fullSource.Username == "" && s.SourceKeyType != "TUNEIN" && s.SourceKeyType != "INTERNET_RADIO" && s.SourceKeyType != "LOCAL_INTERNET_RADIO" {
+	if fullSource.Username == "" && s.SourceKeyType != constants.ProviderTunein && s.SourceKeyType != constants.ProviderInternetRadio && s.SourceKeyType != constants.ProviderLocalInternetRadio {
 		fullSource.Username = s.SourceKeyAccount
 	}
 
@@ -926,14 +904,14 @@ func mapRecentsToFullResponse(recents []models.ServiceRecent, sources []models.C
 func fillDefaultProviderSettings(account string, resp *models.AccountFullResponse) {
 	for _, p := range constants.StaticProviders {
 		switch p.Name {
-		case "DEEZER":
+		case constants.ProviderDeezer:
 			resp.ProviderSettings = append(resp.ProviderSettings, models.ProviderSetting{
 				BoseID:     account,
 				KeyName:    "ELIGIBLE_FOR_TRIAL",
 				Value:      "false",
 				ProviderID: strconv.Itoa(p.ID),
 			})
-		case "SPOTIFY":
+		case constants.ProviderSpotify:
 			resp.ProviderSettings = append(resp.ProviderSettings, models.ProviderSetting{
 				BoseID:     account,
 				KeyName:    "STREAMING_QUALITY",
@@ -1185,7 +1163,7 @@ func UpdatePreset(ds *datastore.DataStore, account, device string, presetNumber 
 	}
 
 	if matchingSrc == nil {
-		if newPresetElem.SourceID == "INTERNET_RADIO" || newPresetElem.SourceID == "TUNEIN" || newPresetElem.SourceID == "SPOTIFY" {
+		if newPresetElem.SourceID == constants.ProviderInternetRadio || newPresetElem.SourceID == constants.ProviderTunein || newPresetElem.SourceID == constants.ProviderSpotify {
 			// Find by SourceKeyType instead of ID if it's a default source
 			for i := range sources {
 				if sources[i].SourceKeyType == newPresetElem.SourceID {
@@ -1333,7 +1311,7 @@ func syncMatchingSource(matchingSrc *models.ConfiguredSource, input recentInput)
 
 	if matchingSrc.SourceName == "" && matchingSrc.DisplayName != "" {
 		// Parity: for some services like TuneIn, sourcename should be empty
-		if !strings.EqualFold(matchingSrc.DisplayName, "TUNEIN") && matchingSrc.DisplayName != "Other" {
+		if !strings.EqualFold(matchingSrc.DisplayName, constants.ProviderTunein) && matchingSrc.DisplayName != "Other" {
 			matchingSrc.SourceName = matchingSrc.DisplayName
 		}
 	}
@@ -1344,7 +1322,7 @@ func syncMatchingSource(matchingSrc *models.ConfiguredSource, input recentInput)
 
 	if matchingSrc.Username == "" && matchingSrc.DisplayName != "" {
 		// Parity: for some services like TuneIn, username should be empty
-		if !strings.EqualFold(matchingSrc.DisplayName, "TUNEIN") && matchingSrc.DisplayName != "Other" {
+		if !strings.EqualFold(matchingSrc.DisplayName, constants.ProviderTunein) && matchingSrc.DisplayName != "Other" {
 			matchingSrc.Username = matchingSrc.DisplayName
 		}
 	}
@@ -1374,12 +1352,12 @@ func AddRecent(ds *datastore.DataStore, account, device string, sourceXML []byte
 
 	// Parity: ensure generic tokens for TUNEIN and LOCAL_INTERNET_RADIO if missing.
 	// This covers both learned and already existing sources.
-	if (matchingSrc.SourceProviderID == "25" || matchingSrc.ID == "TUNEIN" || strings.Contains(input.Location, "/v1/playback/station/")) && matchingSrc.Secret == "" {
-		matchingSrc.Secret = datastore.GenerateSerialSecret("tunein")
-		matchingSrc.SecretType = "token"
-	} else if matchingSrc.ID == "LOCAL_INTERNET_RADIO" && matchingSrc.Secret == "" {
+	if (matchingSrc.SourceProviderID == strconv.Itoa(constants.TuneinProviderID) || matchingSrc.ID == constants.ProviderTunein || strings.Contains(input.Location, "/v1/playback/station/")) && matchingSrc.Secret == "" {
+		matchingSrc.Secret = datastore.GenerateSerialSecret(strings.ToLower(constants.ProviderTunein))
+		matchingSrc.SecretType = constants.CredentialTypeToken
+	} else if matchingSrc.ID == constants.ProviderLocalInternetRadio && matchingSrc.Secret == "" {
 		matchingSrc.Secret = datastore.GenerateSerialSecret("local-internet-radio")
-		matchingSrc.SecretType = "token"
+		matchingSrc.SecretType = constants.CredentialTypeToken
 	}
 
 	if learned {
@@ -1428,12 +1406,12 @@ func learnSource(ds *datastore.DataStore, account, device string, sources []mode
 
 	if sourceLearned {
 		// Ensure generic tokens for TUNEIN and LOCAL_INTERNET_RADIO if missing
-		if (matchingSrc.SourceProviderID == "25" || matchingSrc.ID == "TUNEIN" || strings.Contains(location, "/v1/playback/station/")) && matchingSrc.Secret == "" {
-			matchingSrc.Secret = datastore.GenerateSerialSecret("tunein")
-			matchingSrc.SecretType = "token"
-		} else if matchingSrc.ID == "LOCAL_INTERNET_RADIO" && matchingSrc.Secret == "" {
+		if (matchingSrc.SourceProviderID == strconv.Itoa(constants.TuneinProviderID) || matchingSrc.ID == constants.ProviderTunein || strings.Contains(location, "/v1/playback/station/")) && matchingSrc.Secret == "" {
+			matchingSrc.Secret = datastore.GenerateSerialSecret(strings.ToLower(constants.ProviderTunein))
+			matchingSrc.SecretType = constants.CredentialTypeToken
+		} else if matchingSrc.ID == constants.ProviderLocalInternetRadio && matchingSrc.Secret == "" {
 			matchingSrc.Secret = datastore.GenerateSerialSecret("local-internet-radio")
-			matchingSrc.SecretType = "token"
+			matchingSrc.SecretType = constants.CredentialTypeToken
 		}
 
 		persistLearnedSource(ds, account, device, sources, matchingSrc)
@@ -1448,8 +1426,8 @@ func createLearnedSource(sourceID, location, sourceName, credentialValue, source
 	// if it's already a known source or if it's a generic TuneIn request.
 	if displayName == "" && sourceID != "" {
 		// Try to deduce from sourceID if it looks like a known service
-		if sourceID == "Spotify" {
-			displayName = "Spotify"
+		if sourceID == constants.ProviderSpotify {
+			displayName = constants.ProviderSpotify
 		}
 	}
 
@@ -1464,24 +1442,24 @@ func createLearnedSource(sourceID, location, sourceName, credentialValue, source
 	}
 
 	switch {
-	case sourceProviderID == "25" || sourceID == "TUNEIN" || strings.Contains(location, "/v1/playback/station/"):
-		src.SourceKey.Type = "TUNEIN"
-		src.SourceKeyType = "TUNEIN"
+	case sourceProviderID == strconv.Itoa(constants.TuneinProviderID) || sourceID == constants.ProviderTunein || strings.Contains(location, "/v1/playback/station/"):
+		src.SourceKey.Type = constants.ProviderTunein
+		src.SourceKeyType = constants.ProviderTunein
 		src.Type = "Audio"
-		src.SecretType = "token"
+		src.SecretType = constants.CredentialTypeToken
 
 		if src.Secret == "" {
-			src.Secret = datastore.GenerateSerialSecret("tunein")
+			src.Secret = datastore.GenerateSerialSecret(strings.ToLower(constants.ProviderTunein))
 		}
 
-		if src.DisplayName == "Other" || src.DisplayName == "TuneIn" || src.DisplayName == "" {
-			src.DisplayName = "TuneIn"
+		if src.DisplayName == "Other" || src.DisplayName == constants.ProviderTunein || src.DisplayName == "" {
+			src.DisplayName = constants.ProviderTunein
 		}
-	case sourceID == "LOCAL_INTERNET_RADIO":
-		src.SourceKey.Type = "LOCAL_INTERNET_RADIO"
-		src.SourceKeyType = "LOCAL_INTERNET_RADIO"
+	case sourceID == constants.ProviderLocalInternetRadio:
+		src.SourceKey.Type = constants.ProviderLocalInternetRadio
+		src.SourceKeyType = constants.ProviderLocalInternetRadio
 		src.Type = "Audio"
-		src.SecretType = "token"
+		src.SecretType = constants.CredentialTypeToken
 
 		if src.Secret == "" {
 			src.Secret = datastore.GenerateSerialSecret("local-internet-radio")
@@ -1490,14 +1468,14 @@ func createLearnedSource(sourceID, location, sourceName, credentialValue, source
 		if src.DisplayName == "Other" || src.DisplayName == "Local Internet Radio" || src.DisplayName == "" {
 			src.DisplayName = "Local Internet Radio"
 		}
-	case strings.Contains(location, "spotify") || strings.Contains(location, "c3BvdGlme") || sourceID == "SPOTIFY":
-		src.SourceKey.Type = "SPOTIFY"
-		src.SourceKeyType = "SPOTIFY"
+	case strings.Contains(location, "spotify") || strings.Contains(location, "c3BvdGlme") || sourceID == constants.ProviderSpotify:
+		src.SourceKey.Type = constants.ProviderSpotify
+		src.SourceKeyType = constants.ProviderSpotify
 		src.Type = "Audio"
-		src.SecretType = "token_version_3"
+		src.SecretType = constants.CredentialTypeTokenV3
 
 		if src.DisplayName == "Other" {
-			src.DisplayName = "Spotify"
+			src.DisplayName = constants.ProviderSpotify
 		}
 	default:
 		src.SourceKey.Type = "INVALID"
@@ -1852,8 +1830,8 @@ func AddSource(ds *datastore.DataStore, account, username, providerID, secret, s
 		}
 
 		newSrc.SourceKey.Account = username
-		if providerID == "15" {
-			newSrc.SourceKey.Type = "SPOTIFY"
+		if providerID == strconv.Itoa(constants.SpotifyProviderID) {
+			newSrc.SourceKey.Type = constants.ProviderSpotify
 		} else {
 			newSrc.SourceKey.Type = providerID
 		}
@@ -1867,7 +1845,7 @@ func AddSource(ds *datastore.DataStore, account, username, providerID, secret, s
 
 		for i := range sources {
 			if sources[i].SourceProviderID == providerID ||
-				(providerID == "15" && sources[i].SourceKey.Type == "SPOTIFY") {
+				(providerID == strconv.Itoa(constants.SpotifyProviderID) && sources[i].SourceKey.Type == constants.ProviderSpotify) {
 				sources[i] = newSrc
 				replaced = true
 
