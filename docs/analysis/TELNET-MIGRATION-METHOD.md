@@ -496,11 +496,11 @@ that `checkIsMigrated` writes individually:
 The frontend opens with a state card that surfaces three orthogonal
 axes derived from these flags:
 
-| Axis              | Verdict semantics                                                                |
-|-------------------|----------------------------------------------------------------------------------|
+| Axis              | Verdict semantics                                                                                                     |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------|
 | URL Configuration | URL flip active → ✅; original Bose URLs + DNS hook active → ✅ (intercepted); original + no DNS → ❌ (not intercepted). |
-| DNS Interception  | None / resolv.conf hook / /etc/hosts (with deprecated badge).                    |
-| CA / TLS          | Local root CA installed yes/no.                                                  |
+| DNS Interception  | None / resolv.conf hook / /etc/hosts (with deprecated badge).                                                         |
+| CA / TLS          | Local root CA installed yes/no.                                                                                       |
 
 Plus a Preconditions row: `remote_services` persistence, account
 pairing state, XML config backup presence. Action affordances
@@ -607,15 +607,15 @@ configured `swUpdateUrl`.
 
 ### 9.6 Backend additions worth knowing
 
-| Addition                                                              | Where                                                | Why                                                                                                       |
-|-----------------------------------------------------------------------|------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
-| `applyURLOverrides(cfg, options)`                                     | `pkg/service/setup/setup.go`                         | Per-field literal `marge_url` / `stats_url` / `sw_update_url` / `bmx_url` overrides win over `applyProxyOptions`. Honored by both `GetMigrationSummary` and `migrateViaXML`. |
-| `telnetURLsFromOptions(targetURL, options)`                           | `pkg/service/setup/telnet_migration.go`              | Same option family as above, plus envswitch arg derivation rule (arg1 = final Marge verbatim; the soundcork-suffix case drops out).                                         |
-| Per-axis booleans + `IsPaired` + `Warnings`                           | `MigrationSummary`                                   | Surfaces partial-state cells and SSH-XML ⇄ telnet-getpdo cross-check disagreements.                                                                                         |
-| `parseGetpdoConfig`                                                   | `pkg/service/setup/preflight_crosscheck.go`          | Parses the Protobuf-text-like nested-block reply (`key { text: "..." }`) FW 27.0.6 actually sends, plus the legacy `key=value` shape as a tolerance path.                   |
-| `probeRegistry` + `RunTelnetRoundTripProbe` + `/setup/telnet-probe`   | `pkg/service/handlers` / `pkg/service/setup`         | §9.5.                                                                                                                                                                       |
-| `migrationOptionKeys` allow-list                                      | `pkg/service/handlers/migration_options.go`          | Unknown query keys never reach the manager. Both XML mode keys and `*_url` keys are recognised.                                                                             |
-| Telnet client default timeouts: dial 4s, read 7s, write 3s, idle 600ms | `pkg/telnet/telnet.go`                              | Bumped from the original 2s/5s/2s/400ms after observing transient i/o-timeout flakes on healthy speakers that recovered on retry.                                            |
+| Addition                                                               | Where                                        | Why                                                                                                                                                                          |
+|------------------------------------------------------------------------|----------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `applyURLOverrides(cfg, options)`                                      | `pkg/service/setup/setup.go`                 | Per-field literal `marge_url` / `stats_url` / `sw_update_url` / `bmx_url` overrides win over `applyProxyOptions`. Honored by both `GetMigrationSummary` and `migrateViaXML`. |
+| `telnetURLsFromOptions(targetURL, options)`                            | `pkg/service/setup/telnet_migration.go`      | Same option family as above, plus envswitch arg derivation rule (arg1 = final Marge verbatim; the soundcork-suffix case drops out).                                          |
+| Per-axis booleans + `IsPaired` + `Warnings`                            | `MigrationSummary`                           | Surfaces partial-state cells and SSH-XML ⇄ telnet-getpdo cross-check disagreements.                                                                                          |
+| `parseGetpdoConfig`                                                    | `pkg/service/setup/preflight_crosscheck.go`  | Parses the Protobuf-text-like nested-block reply (`key { text: "..." }`) FW 27.0.6 actually sends, plus the legacy `key=value` shape as a tolerance path.                    |
+| `probeRegistry` + `RunTelnetRoundTripProbe` + `/setup/telnet-probe`    | `pkg/service/handlers` / `pkg/service/setup` | §9.5.                                                                                                                                                                        |
+| `migrationOptionKeys` allow-list                                       | `pkg/service/handlers/migration_options.go`  | Unknown query keys never reach the manager. Both XML mode keys and `*_url` keys are recognised.                                                                              |
+| Telnet client default timeouts: dial 4s, read 7s, write 3s, idle 600ms | `pkg/telnet/telnet.go`                       | Bumped from the original 2s/5s/2s/400ms after observing transient i/o-timeout flakes on healthy speakers that recovered on retry.                                            |
 
 ### 9.7 Future probe candidates
 
