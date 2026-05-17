@@ -154,7 +154,7 @@ func (s *Server) HandleGetSettings(w http.ResponseWriter, _ *http.Request) {
 	dnsUpstream := s.dnsUpstream
 	dnsBindAddr := s.dnsBindAddr
 	internalPaths := s.internalPaths
-	redact, logBody, record := s.proxyRedact, s.proxyLogBody, s.recordEnabled
+	redact, logBody, record := s.redactLogs, s.logBodies, s.recordEnabled
 	shortcuts := s.shortcuts
 	spotifyConfigured := s.spotifyService != nil
 	spotifyClientID := s.spotifyClientID
@@ -317,8 +317,8 @@ func (s *Server) HandleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 
 	// Persist to datastore
 	// Access fields directly since we already hold the lock
-	currentRedact := s.proxyRedact
-	currentLogBody := s.proxyLogBody
+	currentRedact := s.redactLogs
+	currentLogBody := s.logBodies
 	currentRecord := s.recordEnabled
 	currentHTTPS := s.httpsServerURL
 
@@ -880,8 +880,8 @@ func (s *Server) HandleUpdateProxySettings(w http.ResponseWriter, r *http.Reques
 	}
 
 	s.mu.Lock()
-	s.proxyRedact = settings.Redact
-	s.proxyLogBody = settings.LogBody
+	s.redactLogs = settings.Redact
+	s.logBodies = settings.LogBody
 	s.recordEnabled = settings.Record
 
 	if s.recorder != nil {
@@ -898,8 +898,8 @@ func (s *Server) HandleUpdateProxySettings(w http.ResponseWriter, r *http.Reques
 	err := s.ds.SaveSettings(datastore.Settings{
 		ServerURL:          serverURL,
 		HTTPServerURL:      httpsServerURL,
-		RedactLogs:         s.proxyRedact,
-		LogBodies:          s.proxyLogBody,
+		RedactLogs:         s.redactLogs,
+		LogBodies:          s.logBodies,
 		RecordInteractions: s.recordEnabled,
 		DiscoveryInterval:  discoveryInterval,
 		DiscoveryEnabled:   discoveryEnabled,

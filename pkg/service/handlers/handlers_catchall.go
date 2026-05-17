@@ -9,9 +9,9 @@ import (
 
 // HandleNotFound handles requests that don't match any route.
 // It always logs [UNHANDLED] so unimplemented endpoints are visible in plain output.
-// When proxyLogBody is enabled it also logs the request body (truncated to 512 bytes).
+// When logBodies is enabled it also logs the request body (truncated to 512 bytes).
 func (s *Server) HandleNotFound(w http.ResponseWriter, r *http.Request) {
-	if s.proxyLogBody && r.Body != nil {
+	if s.logBodies && r.Body != nil {
 		body, _ := io.ReadAll(r.Body)
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
 

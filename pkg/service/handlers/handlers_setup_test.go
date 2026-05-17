@@ -33,8 +33,8 @@ func TestProxySettingsAPI(t *testing.T) {
 	defer ts.Close()
 
 	// Initial State
-	server.proxyRedact = true
-	server.proxyLogBody = false
+	server.redactLogs = true
+	server.logBodies = false
 
 	// 1. Test GET
 	res, err := http.Get(ts.URL + "/setup/proxy-settings")
@@ -80,8 +80,8 @@ func TestProxySettingsAPI(t *testing.T) {
 	}
 
 	// Verify server state
-	if server.proxyRedact != false || server.proxyLogBody != true {
-		t.Errorf("POST: Server state did not update: redact=%v, logBody=%v", server.proxyRedact, server.proxyLogBody)
+	if server.redactLogs != false || server.logBodies != true {
+		t.Errorf("POST: Server state did not update: redact=%v, logBody=%v", server.redactLogs, server.logBodies)
 	}
 
 	res, err = http.Get(ts.URL + "/setup/proxy-settings")

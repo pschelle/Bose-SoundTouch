@@ -39,7 +39,7 @@ func TestHandleNotFound_UnhandledLogging(t *testing.T) {
 		}
 	})
 
-	t.Run("includes body in log when proxyLogBody is true", func(t *testing.T) {
+	t.Run("includes body in log when logBodies is true", func(t *testing.T) {
 		ds := datastore.NewDataStore(t.TempDir())
 		server := NewServer(ds, nil, "http://localhost", false, true, false)
 
@@ -50,11 +50,11 @@ func TestHandleNotFound_UnhandledLogging(t *testing.T) {
 		})
 
 		if !strings.Contains(logged, "<payload/>") {
-			t.Errorf("expected body in log when proxyLogBody=true, got: %s", logged)
+			t.Errorf("expected body in log when logBodies=true, got: %s", logged)
 		}
 	})
 
-	t.Run("omits body from log when proxyLogBody is false", func(t *testing.T) {
+	t.Run("omits body from log when logBodies is false", func(t *testing.T) {
 		ds := datastore.NewDataStore(t.TempDir())
 		server := NewServer(ds, nil, "http://localhost", false, false, false)
 
@@ -65,7 +65,7 @@ func TestHandleNotFound_UnhandledLogging(t *testing.T) {
 		})
 
 		if strings.Contains(logged, "<secret/>") {
-			t.Errorf("expected body omitted when proxyLogBody=false, got: %s", logged)
+			t.Errorf("expected body omitted when logBodies=false, got: %s", logged)
 		}
 		if !strings.Contains(logged, "[UNHANDLED]") {
 			t.Errorf("expected [UNHANDLED] even without body, got: %s", logged)

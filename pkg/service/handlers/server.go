@@ -35,8 +35,8 @@ type Server struct {
 	serverURL           string
 	httpsServerURL      string
 	discovering         bool
-	proxyRedact         bool
-	proxyLogBody        bool
+	redactLogs          bool
+	logBodies           bool
 	recordEnabled       bool
 	discoveryInterval   time.Duration
 	discoveryEnabled    bool
@@ -86,13 +86,13 @@ var bufferPool = sync.Pool{
 }
 
 // NewServer creates a new SoundTouch service server.
-func NewServer(ds *datastore.DataStore, sm *setup.Manager, serverURL string, proxyRedact, proxyLogBody, recordEnabled bool) *Server {
+func NewServer(ds *datastore.DataStore, sm *setup.Manager, serverURL string, redactLogs, logBodies, recordEnabled bool) *Server {
 	s := &Server{
 		ds:                ds,
 		sm:                sm,
 		serverURL:         serverURL,
-		proxyRedact:       proxyRedact,
-		proxyLogBody:      proxyLogBody,
+		redactLogs:        redactLogs,
+		logBodies:         logBodies,
 		recordEnabled:     recordEnabled,
 		discoveryInterval: 5 * time.Minute,
 		discoveryEnabled:  true,
@@ -390,7 +390,7 @@ func (s *Server) SetRecorder(r *proxy.Recorder) {
 
 	s.recorder = r
 	if r != nil {
-		r.Redact = s.proxyRedact
+		r.Redact = s.redactLogs
 	}
 }
 
@@ -568,7 +568,7 @@ func (s *Server) GetProxySettings() (bool, bool, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	return s.proxyRedact, s.proxyLogBody, s.recordEnabled
+	return s.redactLogs, s.logBodies, s.recordEnabled
 }
 
 // DiscoverDevices starts a background device discovery process.
