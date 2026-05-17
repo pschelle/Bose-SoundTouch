@@ -509,7 +509,12 @@ function openTab(evt, tabId) {
 
     if (evt) {
         evt.currentTarget.className += " active";
-        history.pushState(null, '', '#' + tabId);
+        let hash = tabId;
+        if (tabId === "tab-migration") {
+            const dev = document.getElementById("migration-device-list").value;
+            if (dev) hash += "?" + dev;
+        }
+        history.pushState(null, '', '#' + hash);
     } else {
         // Find the button that corresponds to the tabId and activate it
         for (let i = 0; i < tablinks.length; i++) {
@@ -523,11 +528,28 @@ function openTab(evt, tabId) {
 }
 
 window.addEventListener('popstate', function() {
-    const tabId = window.location.hash.slice(1);
+    const hash = window.location.hash.slice(1);
+    const [tabId, extra] = hash.split('?');
     if (tabId && document.getElementById(tabId)) {
         openTab(null, tabId);
+        if (tabId === "tab-migration" && extra) {
+            selectMigrationDevice(extra);
+        }
     }
 });
+
+function selectMigrationDevice(deviceId) {
+    const sel = document.getElementById("migration-device-list");
+    if (sel) {
+        for (let i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].value === deviceId) {
+                sel.value = deviceId;
+                showSummary(deviceId);
+                return;
+            }
+        }
+    }
+}
 
 function getDeviceDisplayName(deviceId) {
     if (!deviceId) return "Unknown Device";
@@ -1557,15 +1579,19 @@ function formatXML(xml) {
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     fetchSettings();
-    fetchDevices();
+    await fetchDevices();
     triggerDiscovery();
     fetchVersion();
 
     const hash = window.location.hash.slice(1);
-    if (hash && document.getElementById(hash)) {
-        openTab(null, hash);
+    const [tabId, extra] = hash.split('?');
+    if (tabId && document.getElementById(tabId)) {
+        openTab(null, tabId);
+        if (tabId === "tab-migration" && extra) {
+            selectMigrationDevice(extra);
+        }
     }
 
     const syncBtn = document.getElementById("sync-now-btn");
@@ -1713,6 +1739,7 @@ async function showSummary(deviceId) {
         document.getElementById("migration-summary").style.display = "none";
         return;
     }
+    history.pushState(null, '', '#tab-migration?' + deviceId);
     const targetUrl = document.getElementById("target-domain").value;
 
     // Per-field URL overrides (Plan card). The summary endpoint uses
