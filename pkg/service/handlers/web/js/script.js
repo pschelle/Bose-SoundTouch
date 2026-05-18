@@ -1586,9 +1586,9 @@ function formatXML(xml) {
 
 document.addEventListener("DOMContentLoaded", async () => {
     fetchSettings();
-    await fetchDevices();
     triggerDiscovery();
     fetchVersion();
+    await fetchDevices();
 
     const hash = window.location.hash.slice(1);
     const [tabId, extra] = hash.split('?');
