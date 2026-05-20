@@ -1045,16 +1045,32 @@ func (s *Server) handleDiscoveredDevice(d models.DiscoveredDevice) {
 	log.Printf("Using deviceID '%s' from /info for device %s at %s", deviceID, d.Name, d.Host)
 
 	// 3. Get account ID from live info or fallback to existing/default
+	storedAccount := ""
+	if existing := s.findExistingDeviceInfoByDeviceID(deviceID); existing != nil {
+		storedAccount = existing.AccountID
+	}
 	accountID := liveInfo.MargeAccountUUID
 	if accountID == "" {
-		// Try to find account ID from existing device entries
-		if existing := s.findExistingDeviceInfoByDeviceID(deviceID); existing != nil {
-			accountID = existing.AccountID
-		}
+		accountID = storedAccount
 	}
-
 	if accountID == "" {
 		accountID = "default"
+	}
+
+	// If the speaker reports a paired account that differs from the stored
+	// location, clean up the stale entry so ListAllDevices doesn't return duplicates.
+	if liveInfo.MargeAccountUUID != "" && storedAccount != "" && liveInfo.MargeAccountUUID != storedAccount {
+		// Preserve presets, recents and sources before cleaning up
+		if presets, err := s.ds.GetPresets(storedAccount, deviceID); err == nil && len(presets) > 0 {
+			_ = s.ds.SavePresets(liveInfo.MargeAccountUUID, deviceID, presets)
+		}
+		if recents, err := s.ds.GetRecents(storedAccount, deviceID); err == nil && len(recents) > 0 {
+			_ = s.ds.SaveRecents(liveInfo.MargeAccountUUID, deviceID, recents)
+		}
+		if sources, err := s.ds.GetConfiguredSources(storedAccount, deviceID); err == nil && len(sources) > 0 {
+			_ = s.ds.SaveConfiguredSources(liveInfo.MargeAccountUUID, deviceID, sources)
+		}
+		s.ds.RemoveDevice(storedAccount, deviceID)
 	}
 
 	// 4. Get primary MAC address from networkInfo
