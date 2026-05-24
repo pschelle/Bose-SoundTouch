@@ -13,7 +13,7 @@
 
 Bose shut down SoundTouch cloud services on **May 6, 2026**. Presets, music service browsing, and stereo pairing no longer work through Bose's infrastructure. AfterTouch restores all of these — no Bose infrastructure required.
 
-See the [Survival Guide](https://gesellix.github.io/Bose-SoundTouch/guides/SURVIVAL-GUIDE.html) for the full picture.
+See the [Survival Guide](https://gesellix.github.io/Bose-SoundTouch/docs/guides/SURVIVAL-GUIDE/) for the full picture.
 
 ---
 
@@ -48,7 +48,7 @@ The web UI walks you through each method. DNS redirect requires HTTPS — the se
 
 Some setup steps require SSH access to the speaker. Enable it once per device: create a file named `remote_services` on a FAT-formatted USB drive (the drive may need its bootable flag set — see [SoundCork issue #172](https://github.com/deborahgu/soundcork/issues/172)), and insert it while the speaker is powered on. After reboot, root SSH is available with no password.
 
-See [Device Initial Setup](https://gesellix.github.io/Bose-SoundTouch/guides/DEVICE-INITIAL-SETUP.html) and [Migration Guide](https://gesellix.github.io/Bose-SoundTouch/guides/MIGRATION-GUIDE.html) for step-by-step instructions.
+See [Device Initial Setup](https://gesellix.github.io/Bose-SoundTouch/docs/guides/DEVICE-INITIAL-SETUP/) and [Migration Guide](https://gesellix.github.io/Bose-SoundTouch/docs/guides/MIGRATION-GUIDE/) for step-by-step instructions.
 
 ---
 
@@ -64,7 +64,7 @@ See the [soundtouch-backup README](cmd/soundtouch-backup/README.md) for usage.
 
 Command-line control of any SoundTouch device: play/pause/volume, presets, source selection, multiroom zones, device discovery, and more. Works entirely over the local network — no cloud dependency. Well-suited for scripting and home automation.
 
-See the [CLI Reference](https://gesellix.github.io/Bose-SoundTouch/guides/CLI-REFERENCE.html) for full usage.
+See the [CLI Reference](https://gesellix.github.io/Bose-SoundTouch/docs/guides/CLI-REFERENCE/) for full usage.
 
 ---
 
@@ -84,21 +84,21 @@ See the [soundtouch-web README](cmd/soundtouch-web/README.md) for usage.
 go get github.com/gesellix/bose-soundtouch
 ```
 
-See the [API Reference](https://gesellix.github.io/Bose-SoundTouch/reference/API-ENDPOINTS.html) and [pkg.go.dev](https://pkg.go.dev/github.com/gesellix/bose-soundtouch) for documentation.
+See the [API Reference](https://gesellix.github.io/Bose-SoundTouch/docs/reference/API-ENDPOINTS/) and [pkg.go.dev](https://pkg.go.dev/github.com/gesellix/bose-soundtouch) for documentation.
 
 ---
 
 ## Documentation
 
-- [Getting Started](https://gesellix.github.io/Bose-SoundTouch/guides/GETTING-STARTED.html)
-- [Survival Guide](https://gesellix.github.io/Bose-SoundTouch/guides/SURVIVAL-GUIDE.html)
-- [Migration Guide](https://gesellix.github.io/Bose-SoundTouch/guides/MIGRATION-GUIDE.html)
-- [Device Initial Setup](https://gesellix.github.io/Bose-SoundTouch/guides/DEVICE-INITIAL-SETUP.html)
-- [Migration & Safety Guide](https://gesellix.github.io/Bose-SoundTouch/guides/MIGRATION-SAFETY.html)
-- [CLI Reference](https://gesellix.github.io/Bose-SoundTouch/guides/CLI-REFERENCE.html)
-- [SoundTouch Service Guide](https://gesellix.github.io/Bose-SoundTouch/guides/SOUNDTOUCH-SERVICE.html)
-- [HTTPS & CA Setup](https://gesellix.github.io/Bose-SoundTouch/guides/HTTPS-SETUP.html)
-- [API Reference](https://gesellix.github.io/Bose-SoundTouch/reference/API-ENDPOINTS.html)
+- [Getting Started](https://gesellix.github.io/Bose-SoundTouch/docs/guides/GETTING-STARTED/)
+- [Survival Guide](https://gesellix.github.io/Bose-SoundTouch/docs/guides/SURVIVAL-GUIDE/)
+- [Migration Guide](https://gesellix.github.io/Bose-SoundTouch/docs/guides/MIGRATION-GUIDE/)
+- [Device Initial Setup](https://gesellix.github.io/Bose-SoundTouch/docs/guides/DEVICE-INITIAL-SETUP/)
+- [Migration & Safety Guide](https://gesellix.github.io/Bose-SoundTouch/docs/guides/MIGRATION-SAFETY/)
+- [CLI Reference](https://gesellix.github.io/Bose-SoundTouch/docs/guides/CLI-REFERENCE/)
+- [SoundTouch Service Guide](https://gesellix.github.io/Bose-SoundTouch/docs/guides/SOUNDTOUCH-SERVICE/)
+- [HTTPS & CA Setup](https://gesellix.github.io/Bose-SoundTouch/docs/guides/HTTPS-SETUP/)
+- [API Reference](https://gesellix.github.io/Bose-SoundTouch/docs/reference/API-ENDPOINTS/)
 
 ---
 
