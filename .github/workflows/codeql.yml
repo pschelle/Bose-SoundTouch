@@ -25,7 +25,7 @@ jobs:
           - language: actions
             build-mode: none
           - language: go
-            build-mode: autobuild
+            build-mode: manual
           - language: javascript-typescript
             build-mode: none
           - language: python
@@ -45,6 +45,10 @@ jobs:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
           config-file: ${{ matrix.language == 'go' && './.github/codeql-config.yml' || '' }}
+
+      - name: Build Go (required for manual build-mode)
+        if: matrix.language == 'go'
+        run: go build ./...
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
