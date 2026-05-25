@@ -67,6 +67,9 @@ func (c *Client) getConfig() *ssh.ClientConfig {
 }
 
 // Run executes a command on the remote host and returns the combined stdout and stderr.
+//
+// command MUST be a hardcoded shell literal or constructed entirely from
+// internal, service-controlled values — never from user-supplied HTTP input.
 func (c *Client) Run(command string) (string, error) {
 	config := c.getConfig()
 
