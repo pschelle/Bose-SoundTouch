@@ -1,15 +1,41 @@
 {{- /*
-  Render hook: strip .md extension from internal links so that links
-  written as [foo](OTHER-PAGE.md) in Markdown source resolve to the
-  Hugo page URL instead of a raw .md path (which returns 404).
+  Render hook: resolve internal .md links to their Hugo RelPermalink.
 
-  This replaces the jekyll-relative-links behaviour from the old Jekyll
-  site without requiring changes to any content files.
+  Plain "strip .md" is not enough under pretty URLs: a page served at
+  /guides/DEPLOYMENT-OVERVIEW/ would resolve a bare relative href
+  "CLOUD-DEPLOY-WALKTHROUGH" to /guides/DEPLOYMENT-OVERVIEW/CLOUD-DEPLOY-WALKTHROUGH
+  (404).  Using site.GetPage gives the canonical /guides/CLOUD-DEPLOY-WALKTHROUGH/.
+
+  Handles:
+    - same-directory links:         CLOUD-DEPLOY-WALKTHROUGH.md
+    - cross-directory links:        ../architecture/DEVICE-LOCAL-INSTALL.md
+    - anchored links:               OTHER-PAGE.md#section
+    - external links (http/https):  passed through unchanged, opened in new tab
 */ -}}
 {{- $dest := .Destination -}}
 {{- $isAbs := or (strings.HasPrefix $dest "http://") (strings.HasPrefix $dest "https://") (strings.HasPrefix $dest "//") -}}
-{{- if and (not $isAbs) (strings.HasSuffix $dest ".md") -}}
-  {{- $dest = strings.TrimSuffix ".md" $dest -}}
+{{- if not $isAbs -}}
+  {{- /* Split off any fragment (#anchor) */ -}}
+  {{- $fragment := "" -}}
+  {{- $base := $dest -}}
+  {{- if strings.Contains $dest "#" -}}
+    {{- $parts := split $dest "#" -}}
+    {{- $base = index $parts 0 -}}
+    {{- $fragment = printf "#%s" (index $parts 1) -}}
+  {{- end -}}
+  {{- if strings.HasSuffix $base ".md" -}}
+    {{- $pathNoExt := strings.TrimSuffix ".md" $base -}}
+    {{- /* Resolve relative to the current content file's directory */ -}}
+    {{- $dir := "" -}}
+    {{- with .Page.File }}{{ $dir = .Dir }}{{ end -}}
+    {{- $resolved := site.GetPage (path.Join $dir $pathNoExt) -}}
+    {{- if $resolved -}}
+      {{- $dest = printf "%s%s" $resolved.RelPermalink $fragment -}}
+    {{- else -}}
+      {{- /* Fallback: strip .md (better than leaving the extension) */ -}}
+      {{- $dest = printf "%s%s" $pathNoExt $fragment -}}
+    {{- end -}}
+  {{- end -}}
 {{- end -}}
 <a href="{{ $dest }}"
   {{- with .Title }} title="{{ . }}"{{ end -}}
