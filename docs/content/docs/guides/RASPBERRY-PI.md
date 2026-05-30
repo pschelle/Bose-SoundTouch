@@ -6,10 +6,10 @@ host) using the provided installer scripts.
 
 Two scripts are available, one per binary:
 
-| Script           | Binary               | Role                               | Default port |
-|------------------|----------------------|------------------------------------|--------------|
+| Script           | Binary               | Role                                | Default port |
+|------------------|----------------------|-------------------------------------|--------------|
 | `install.sh`     | `soundtouch-service` | Cloud-replacement relay — always-on | 80 / 443     |
-| `install-web.sh` | `soundtouch-web`     | Browser control panel              | 8080         |
+| `install-web.sh` | `soundtouch-web`     | Browser control panel               | 8080         |
 
 Both auto-detect CPU architecture (armv7 / arm64 / amd64), create a `soundtouch`
 system user, and install a systemd unit. They are safe to re-run for updates.
@@ -34,14 +34,14 @@ sudo bash install.sh
 Install a specific version:
 
 ```bash
-sudo bash install.sh v0.99.0
+sudo bash install.sh v0.100.0
 ```
 
 Override defaults at install time:
 
 ```bash
 sudo \
-  VERSION=v0.99.0 \
+  VERSION=v0.100.0 \
   HOSTNAME_FQDN=soundtouch.local \
   HTTP_PORT=80 \
   HTTPS_PORT=443 \
@@ -99,7 +99,7 @@ journalctl -u soundtouch-service -b               # this boot only
 
 ```bash
 sudo bash install.sh              # update to latest release
-sudo bash install.sh v0.99.0     # update to a specific version
+sudo bash install.sh v0.100.0     # update to a specific version
 ```
 
 The script stops the service, downloads the new binary (backs up the old one to
@@ -134,14 +134,14 @@ sudo bash install-web.sh
 Install a specific version:
 
 ```bash
-sudo bash install-web.sh v0.99.0
+sudo bash install-web.sh v0.100.0
 ```
 
 Override defaults at install time:
 
 ```bash
 sudo \
-  VERSION=v0.99.0 \
+  VERSION=v0.100.0 \
   HTTP_PORT=8081 \
   bash install-web.sh
 ```
@@ -211,7 +211,7 @@ journalctl -u soundtouch-web -f
 
 ```bash
 sudo bash install-web.sh              # update to latest release
-sudo bash install-web.sh v0.99.0     # update to a specific version
+sudo bash install-web.sh v0.100.0     # update to a specific version
 ```
 
 ### Removal
