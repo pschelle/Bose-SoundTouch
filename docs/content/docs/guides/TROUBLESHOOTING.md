@@ -1039,6 +1039,83 @@ cat data/accounts/1000001/devices/*/DeviceInfo.xml | grep macAddress
 
 ---
 
+## 🌐 **Cross-subnet / VLAN isolation** {#cross-subnet}
+
+### ❌ AfterTouch unreachable when speaker and server are on different subnets
+
+**Symptoms:**
+
+- AfterTouch is running and reachable from your computer, but the speaker cannot
+  connect to it after migration.
+- `logread | grep aftertouch` on the speaker shows no outgoing requests, or shows
+  `Curl 7, http 0` for the AfterTouch host.
+- Everything works when speaker and server are on the same `/24` subnet, but fails
+  when they are on different VLANs (e.g. IoT VLAN `192.168.20.x` vs server VLAN
+  `192.168.10.x`).
+
+**Cause:**
+
+Since a 2018 firmware update, SoundTouch devices apply an iptables policy that
+blocks incoming traffic from subnets other than their own. The policy lives in
+`/etc/init.d/Firewalls/update_iptables` inside the `block_remote_traffic()`
+function.
+
+**Fix A — Add an explicit ACCEPT rule for your AfterTouch subnet (targeted):**
+
+SSH into the speaker and edit the file:
+
+```bash
+ssh -oHostKeyAlgorithms=+ssh-rsa root@<speaker-ip>
+rw
+cd /etc/init.d/Firewalls/
+vi update_iptables
+```
+
+In `vi`, find `block_remote_traffic()`. Press `i` to enter insert mode. After the
+first `done` line in that function, add:
+
+```
+echo -A INPUT -i $IFACE -s 192.168.10.0/24 -j ACCEPT
+```
+
+Replace `192.168.10.0/24` with the subnet your AfterTouch host is on. Press `Esc`,
+type `:wq`, press `Enter`, then reboot:
+
+```bash
+reboot
+```
+
+To allow **all** subnets, use a wider CIDR range such as `192.168.0.0/16` or
+`0.0.0.0/0`.
+
+**Fix B — Comment out the DROP rule (simpler, allows all inbound traffic):**
+
+Instead of adding an ACCEPT rule, find the `DROP` line inside
+`block_remote_traffic()` and comment it out by prepending `#`:
+
+```bash
+# Before:
+echo -A INPUT -i $IFACE ! -s $ADDR/$CIDR -j DROP
+# After:
+# echo -A INPUT -i $IFACE ! -s $ADDR/$CIDR -j DROP
+```
+
+This is less targeted than Fix A but simpler if you run the speaker in an already
+firewalled network.
+
+**Related: ST20 Series I also blocks outbound connections to non-standard ports**
+
+Some older firmware images (observed on SoundTouch 20 Series I) also apply an
+outbound iptables policy that blocks connections to ports other than 80 and 443.
+If AfterTouch is running on a non-standard port (e.g. 8000, 8080) and the speaker
+simply never reaches it, this policy may be the cause. Fix A and Fix B apply
+equally — inspect `update_iptables` for matching DROP rules on the OUTPUT chain.
+
+*This behaviour was first documented in
+[Discussion #354](https://github.com/gesellix/Bose-SoundTouch/discussions/354).*
+
+---
+
 ## 🌐 **Hostname Resolution** {#hostname-resolution}
 
 ### Why the service resolves the hostname from the device
