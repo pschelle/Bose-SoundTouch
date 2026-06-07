@@ -1056,12 +1056,56 @@ func createDefaultSettings(ds *datastore.DataStore, config serviceConfig) datast
 }
 
 func initDataStore(dataDir string) *datastore.DataStore {
+	warnIfDataDirNotWritable(dataDir)
+
 	ds := datastore.NewDataStore(dataDir)
 	if err := ds.Initialize(); err != nil {
 		log.Printf("Warning: Failed to initialize datastore: %v", err)
 	}
 
 	return ds
+}
+
+// warnIfDataDirNotWritable probes the data dir and logs an actionable message
+// when the process can't write to it. The common cause is running the
+// container as non-root (uid 65532) while a bind-mounted host directory is
+// owned by someone else; without this the failure would surface later as a
+// cryptic permission error deep in a save. It only warns: the datastore's own
+// resilience handles the degraded state.
+func warnIfDataDirNotWritable(dataDir string) {
+	if dataDir == "" {
+		return
+	}
+
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		log.Printf("WARNING: data dir %s cannot be created: %v", sanitizeLog(dataDir), err)
+		logDataDirChownHint(dataDir)
+
+		return
+	}
+
+	probe := filepath.Join(dataDir, ".write-probe")
+	if err := os.WriteFile(probe, []byte("ok"), 0o600); err != nil {
+		log.Printf("WARNING: data dir %s is not writable: %v", sanitizeLog(dataDir), err)
+		logDataDirChownHint(dataDir)
+
+		return
+	}
+
+	_ = os.Remove(probe)
+}
+
+// logDataDirChownHint prints the one-time fix for a non-writable bind-mounted
+// data dir, using the process's own uid. Skipped where uid is unavailable
+// (e.g. Windows), where the hint wouldn't apply.
+func logDataDirChownHint(dataDir string) {
+	uid := os.Getuid()
+	if uid < 0 {
+		return
+	}
+
+	log.Printf("         The service runs as uid %d. If you bind-mounted a host directory as the data dir, "+
+		"make it writable once: chown -R %d:%d %s", uid, uid, uid, sanitizeLog(dataDir))
 }
 
 func initCertificateManager(dataDir, hostname string) *certmanager.CertificateManager {
